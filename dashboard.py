@@ -1,22 +1,23 @@
-import streamlit as st
 import os
+from typing import Dict, List
+import html
+
+import gspread
+import pandas as pd
+import streamlit as st
+from dotenv import load_dotenv
 from google.oauth2.service_account import Credentials
 
-def get_google_credentials():
-    scopes = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
 
-    if "gcp_service_account" in st.secrets:
-        return Credentials.from_service_account_info(
-            st.secrets["gcp_service_account"], scopes=scopes
-        )
-    else:
-        return Credentials.from_service_account_file(
-            os.getenv("SERVICE_ACCOUNT_FILE"), scopes=scopes
-        )
+# =========================================================
+# CONFIG
+# =========================================================
+load_dotenv()
 
 APP_TITLE = "🧩 Termfun Dashboard"
 APP_SUBTITLE = "รวบรวมผลคะแนนสอบ, การสะท้อนผลกิจกรรม และ คะแนน Self-rating แต่ละทักษะ"
 
+DEFAULT_GOOGLE_SHEET_KEY = "1pH-2bpO5FU-BniYxZR5jE8FeY6YfHfSJEF8z88_fhQQ"
 REFLECTION_KEYS = [
     "ฐานวิชาการ 1 : แบ่งน้ำปันใจ",
     "ฐานวิชาการ 2 : The Cellular bridge",
@@ -187,6 +188,25 @@ st.markdown(
 )
 
 
+
+def get_secret_or_env(name: str, default: str | None = None):
+    if name in st.secrets:
+        return st.secrets[name]
+    return os.getenv(name, default)
+
+
+def get_service_account_info() -> dict | None:
+    if "gcp_service_account" in st.secrets:
+        return dict(st.secrets["gcp_service_account"])
+    return None
+
+
+GOOGLE_SHEET_KEY = get_secret_or_env("GOOGLE_SHEET_KEY", DEFAULT_GOOGLE_SHEET_KEY)
+GOOGLE_SHEET_WORKSHEET = get_secret_or_env("GOOGLE_SHEET_WORKSHEET", "data")
+IDSHEET = get_secret_or_env("IDSHEET")
+SERVICE_ACCOUNT_FILE = get_secret_or_env("SERVICE_ACCOUNT_FILE")
+
+
 def require_env(name: str, value: str | None):
     if not value:
         st.error(f"⚠️ ไม่พบ {name} กรุณาตรวจสอบ .env หรือ Secrets")
@@ -206,6 +226,16 @@ def safe_float(value, default: float = 0.0):
 
 def get_google_credentials() -> Credentials:
     scopes = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
+    service_account_info = get_service_account_info()
+
+    if service_account_info:
+        return Credentials.from_service_account_info(service_account_info, scopes=scopes)
+
+    require_env("SERVICE_ACCOUNT_FILE", SERVICE_ACCOUNT_FILE)
+    if not os.path.exists(SERVICE_ACCOUNT_FILE):
+        st.error("⚠️ ไม่พบไฟล์ service account ตาม path ที่ระบุไว้")
+        st.stop()
+
     return Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=scopes)
 
 
@@ -292,6 +322,10 @@ def render_star_rating(label: str, score: float, max_score: int = 5):
         unsafe_allow_html=True,
     )
 
+
+require_env("GOOGLE_SHEET_KEY", GOOGLE_SHEET_KEY)
+require_env("IDSHEET", IDSHEET)
+
 try:
     sheet_data = load_sheet_data()
 except Exception as exc:
@@ -360,6 +394,9 @@ for group in SELF_RATE_GROUPS:
     st.caption(group["group_note"])
     cols = st.columns(2)
     for idx, (_, label, sheet_col) in enumerate(group["skills"]):
+        with cols[idx % 2]:
+            render_star_rating(label, selected_info.get(sheet_col, 0))
+st.markdown("</div>", unsafe_allow_html=True)
         with cols[idx % 2]:
             render_star_rating(label, selected_info.get(sheet_col, 0))
 st.markdown("</div>", unsafe_allow_html=True)
