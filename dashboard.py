@@ -392,7 +392,9 @@ st.markdown('<div class="section-title">ภาพรวมทักษะจา�
 for group in SELF_RATE_GROUPS:
     st.markdown(f"#### {group['group_title']}")
     st.caption(group["group_note"])
+
     cols = st.columns(2)
+
     for idx, (_, label, sheet_col) in enumerate(group["skills"]):
         with cols[idx % 2]:
             render_star_rating(label, selected_info.get(sheet_col, 0))
