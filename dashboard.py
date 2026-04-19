@@ -321,7 +321,14 @@ def render_star_rating(label: str, score: float, max_score: int = 5):
         unsafe_allow_html=True,
     )
 
-
+def get_top_faculty_choices(selected_info: dict) -> list[tuple[str, str]]:
+    candidates = [
+        ("อันดับ 1", selected_info.get("คณะที่อยากเข้า อันดับ 1", "")),
+        ("อันดับ 2", selected_info.get("คณะที่อยากเข้า อันดับ 2", "")),
+        ("อันดับ 3", selected_info.get("คณะที่อยากเข้า อันดับ 3", "")),
+    ]
+    return [(rank, str(value).strip()) for rank, value in candidates if str(value).strip()]
+    
 require_env("GOOGLE_SHEET_KEY", GOOGLE_SHEET_KEY)
 require_env("IDSHEET", IDSHEET)
 
