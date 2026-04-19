@@ -236,9 +236,8 @@ def get_google_credentials() -> Credentials:
         st.error("⚠️ ไม่พบไฟล์ service account ตาม path ที่ระบุไว้")
         st.stop()
 
-    return Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=scopes)
-
-
+    return Credentials.from_service_account_info(st.secrets["gcp_service_account"])
+    
 @st.cache_resource
 def get_gspread_client():
     return gspread.authorize(get_google_credentials())
