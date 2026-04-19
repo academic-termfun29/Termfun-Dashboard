@@ -403,6 +403,3 @@ for group in SELF_RATE_GROUPS:
             render_star_rating(label, selected_info.get(sheet_col, 0))
 
 st.markdown("</div>", unsafe_allow_html=True)
-        with cols[idx % 2]:
-            render_star_rating(label, selected_info.get(sheet_col, 0))
-st.markdown("</div>", unsafe_allow_html=True)
