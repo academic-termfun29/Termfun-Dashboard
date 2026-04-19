@@ -1,30 +1,16 @@
-from pathlib import Path
-import os
-from typing import Dict, List
-import html
-
-import gspread
-import pandas as pd
 import streamlit as st
-from dotenv import load_dotenv
 from google.oauth2.service_account import Credentials
 
-
-# =========================================================
-# CONFIG
-# =========================================================
-load_dotenv()
+def get_google_credentials() -> Credentials:
+    scopes = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
+    return Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"],
+        scopes=scopes,
+    )
 
 APP_TITLE = "🧩 Termfun Dashboard"
 APP_SUBTITLE = "รวบรวมผลคะแนนสอบ, การสะท้อนผลกิจกรรม และ คะแนน Self-rating แต่ละทักษะ"
 
-SERVICE_ACCOUNT_FILE = os.getenv("SERVICE_ACCOUNT_FILE")
-GOOGLE_SHEET_KEY = os.getenv(
-    "GOOGLE_SHEET_KEY",
-    "1pH-2bpO5FU-BniYxZR5jE8FeY6YfHfSJEF8z88_fhQQ",
-)
-GOOGLE_SHEET_WORKSHEET = os.getenv("GOOGLE_SHEET_WORKSHEET", "data")
-IDSHEET = os.getenv("IDSHEET")
 REFLECTION_KEYS = [
     "ฐานวิชาการ 1 : แบ่งน้ำปันใจ",
     "ฐานวิชาการ 2 : The Cellular bridge",
