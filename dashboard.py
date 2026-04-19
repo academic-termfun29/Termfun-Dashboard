@@ -374,7 +374,24 @@ for key, value in list(selected_info.items())[:3]:
         """,
         unsafe_allow_html=True,
     )
+st.markdown('<div class="section-title">🎯 คณะที่อยากเข้า 3 อันดับแรก</div>', unsafe_allow_html=True)
 
+faculty_choices = get_top_faculty_choices(selected_info)
+
+if faculty_choices:
+    for rank, faculty in faculty_choices:
+        st.markdown(
+            f"""
+            <div class="soft-panel">
+                <div class="soft-panel-label">{escape_html(rank)}</div>
+                <div class="soft-panel-value">{escape_html(faculty)}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+else:
+    st.info("ยังไม่มีข้อมูลคณะที่อยากเข้า 3 อันดับแรก")
+    
 st.markdown('<div class="section-title">Reflection ตามฐาน</div>', unsafe_allow_html=True)
 for item in collect_reflection_items(selected_info):
     st.markdown(
