@@ -389,15 +389,19 @@ st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown('<div class="main-card">', unsafe_allow_html=True)
 st.markdown('<div class="section-title">ภาพรวมทักษะจากข้อมูลในระบบ</div>', unsafe_allow_html=True)
+
 for group in SELF_RATE_GROUPS:
     st.markdown(f"#### {group['group_title']}")
     st.caption(group["group_note"])
 
     cols = st.columns(2)
 
-    for idx, (_, label, sheet_col) in enumerate(group["skills"]):
+    for idx, skill in enumerate(group["skills"]):
+        key, label, sheet_col = skill
+
         with cols[idx % 2]:
             render_star_rating(label, selected_info.get(sheet_col, 0))
+
 st.markdown("</div>", unsafe_allow_html=True)
         with cols[idx % 2]:
             render_star_rating(label, selected_info.get(sheet_col, 0))
