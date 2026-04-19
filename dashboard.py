@@ -1,12 +1,18 @@
 import streamlit as st
+import os
 from google.oauth2.service_account import Credentials
 
-def get_google_credentials() -> Credentials:
+def get_google_credentials():
     scopes = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
-    return Credentials.from_service_account_info(
-        st.secrets["gcp_service_account"],
-        scopes=scopes,
-    )
+
+    if "gcp_service_account" in st.secrets:
+        return Credentials.from_service_account_info(
+            st.secrets["gcp_service_account"], scopes=scopes
+        )
+    else:
+        return Credentials.from_service_account_file(
+            os.getenv("SERVICE_ACCOUNT_FILE"), scopes=scopes
+        )
 
 APP_TITLE = "🧩 Termfun Dashboard"
 APP_SUBTITLE = "รวบรวมผลคะแนนสอบ, การสะท้อนผลกิจกรรม และ คะแนน Self-rating แต่ละทักษะ"
@@ -285,12 +291,6 @@ def render_star_rating(label: str, score: float, max_score: int = 5):
         """,
         unsafe_allow_html=True,
     )
-
-
-require_env("SERVICE_ACCOUNT_FILE", SERVICE_ACCOUNT_FILE)
-if not os.path.exists(SERVICE_ACCOUNT_FILE):
-    st.error("⚠️ ไม่พบไฟล์ service account ตาม path ที่ระบุไว้")
-    st.stop()
 
 try:
     sheet_data = load_sheet_data()
