@@ -339,6 +339,32 @@ def render_star_rating(label: str, score: float, max_score: int = 5):
 
 
 
+
+
+def get_student_name(selected_info: dict) -> str:
+    candidate_keys = ["ชื่อ", "ชื่อ-สกุล", "ชื่อ สกุล", "name", "fullname", "full name"]
+    normalized = {str(k).strip().lower(): v for k, v in selected_info.items()}
+    for key in candidate_keys:
+        value = normalized.get(key.strip().lower())
+        if str(value).strip():
+            return str(value).strip()
+    return "-"
+
+
+def collect_reflections_for_base(sheet_data: list[dict], reflection_key: str) -> list[dict]:
+    items = []
+    for row in sheet_data:
+        student_id = str(row.get("ID", "")).strip()
+        reflection_text = str(row.get(reflection_key, "")).strip()
+        if not student_id or not reflection_text:
+            continue
+        items.append({
+            "id": student_id,
+            "name": get_student_name(row),
+            "label": reflection_key,
+            "text": reflection_text,
+        })
+    return items
 def get_top_faculty_choices(selected_info: dict) -> list[tuple[str, str]]:
     candidates = [
         ("อันดับ 1", selected_info.get("คณะที่อยากเข้า อันดับ 1", "")),
@@ -416,7 +442,7 @@ st.markdown('<div class="section-title">Reflection ตามฐาน</div>', un
 reflection_items = collect_reflection_items(selected_info)
 reflection_filter_options = ["ทั้งหมด"] + REFLECTION_KEYS
 selected_reflection_filter = st.selectbox(
-    "กรอง Reflection ตามฐาน",
+    "กรอง Reflection ของนักเรียนที่เลือก",
     reflection_filter_options,
     key="reflection_filter",
 )
@@ -442,6 +468,64 @@ if filtered_reflections:
         )
 else:
     st.info("ฐานนี้ยังไม่มี Reflection")
+
+st.markdown('<div class="main-card">', unsafe_allow_html=True)
+st.markdown('<div class="section-title">🗂️ ดู Reflection ของทุก ID แยกตามฐาน</div>', unsafe_allow_html=True)
+st.caption('เลือกฐานที่ต้องการ แล้วระบบจะแสดงนักเรียนทุกคนที่มี Reflection ในฐานนั้น')
+
+selected_reflection_base = st.selectbox(
+    "เลือกฐานเพื่อดู Reflection ของทุก ID",
+    REFLECTION_KEYS,
+    key="all_ids_reflection_base",
+)
+
+base_reflection_items = collect_reflections_for_base(sheet_data, selected_reflection_base)
+show_only_with_name = st.toggle("แสดงเฉพาะรายการที่มีชื่อ", value=False, key="show_only_with_name")
+
+if show_only_with_name:
+    base_reflection_items = [item for item in base_reflection_items if item["name"] != "-"]
+
+st.markdown(
+    f"<div class='sub-text'>พบข้อมูล <b>{len(base_reflection_items)}</b> รายการในฐานนี้</div>",
+    unsafe_allow_html=True,
+)
+
+if base_reflection_items:
+    id_options = ["ทั้งหมด"] + [item["id"] for item in base_reflection_items]
+    selected_id_filter = st.selectbox(
+        "เลือก ID เพื่อดูเฉพาะคน",
+        id_options,
+        key="all_ids_reflection_id_filter",
+    )
+
+    visible_items = base_reflection_items if selected_id_filter == "ทั้งหมด" else [
+        item for item in base_reflection_items if item["id"] == selected_id_filter
+    ]
+
+    st.dataframe(
+        pd.DataFrame([
+            {"ID": item["id"], "ชื่อ": item["name"], "ฐาน": item["label"]}
+            for item in base_reflection_items
+        ]),
+        use_container_width=True,
+        hide_index=True,
+    )
+
+    for item in visible_items:
+        st.markdown(
+            f"""
+            <div class="reflection-card">
+                <div class="reflection-chip">ID: {escape_html(item['id'])} | {escape_html(item['name'])}</div>
+                <div class="soft-panel-label" style="margin-bottom:0.45rem;">{escape_html(item['label'])}</div>
+                <div class="reflection-text">“{escape_html(item['text'])}”</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+else:
+    st.info("ยังไม่มี Reflection ของฐานนี้ในระบบ")
+
+st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="main-card">', unsafe_allow_html=True)
 st.markdown('<div class="section-title">คะแนน Pre-test / Post-test</div>', unsafe_allow_html=True)
