@@ -121,29 +121,27 @@ st.markdown(
         color: #1d4ed8;
         margin-bottom: 0.3rem;
     }
-    
-     .soft-panel {
-        padding: 0.7rem 1rem;
+    .soft-panel {
+        padding: 0.8rem 1rem;
         border-radius: 20px;
         border: 1px solid rgba(191,219,254,0.75);
-        background: linear-gradient(180deg, rgba(255,255,255,0.88), rgba(248,252,255,0.74));
+        background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(248,252,255,0.78));
         box-shadow: 0 10px 22px rgba(15,23,42,0.04);
         margin-bottom: 0.72rem;
+        min-height: 108px;
     }
-
     .soft-panel-label {
-        font-size: 0.62rem;
-        color: var(--text-muted);
-        font-weight: 600;
-        margin-bottom: 0.15rem;
+        font-size: 0.68rem;
+        color: #64748b;
+        font-weight: 700;
+        margin-bottom: 0.25rem;
         text-transform: uppercase;
         letter-spacing: 0.05em;
     }
-
     .soft-panel-value {
-        font-size: 1rem;
-        color: var(--text-main);
-        font-weight: 350;
+        font-size: 1.02rem;
+        color: #0f172a;
+        font-weight: 500;
         line-height: 1.6;
     }
     .sub-text {
@@ -156,6 +154,7 @@ st.markdown(
         font-weight: 700;
         color: #0f172a;
         margin-bottom: 0.7rem;
+        margin-top: 0.8rem;
     }
     .reflection-card {
         padding: 1rem;
@@ -182,34 +181,10 @@ st.markdown(
         line-height: 1.7;
         white-space: pre-wrap;
     }
-    .profile-grid-card {
-        padding: 1rem 1.05rem;
-        border-radius: 22px;
-        border: 1px solid rgba(191,219,254,0.82);
-        background: linear-gradient(180deg, rgba(255,255,255,0.97), rgba(239,246,255,0.90));
-        box-shadow: 0 12px 28px rgba(15,23,42,0.05);
-        min-height: 120px;
-        margin-bottom: 0.85rem;
-    }
-    .profile-grid-label {
-        font-size: 0.72rem;
-        color: #64748b;
-        font-weight: 700;
-        margin-bottom: 0.4rem;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-    }
-    .profile-grid-value {
-        font-size: 1.08rem;
-        color: #0f172a;
-        font-weight: 600;
-        line-height: 1.55;
-        word-break: break-word;
-    }
     div[data-baseweb="select"] > div {
         border-radius: 16px !important;
         border: 1px solid rgba(191,219,254,0.9) !important;
-        background: rgba(255,255,255,0.90) !important;
+        background: rgba(255,255,255,0.88) !important;
         box-shadow: 0 8px 18px rgba(15,23,42,0.05) !important;
     }
     </style>
@@ -223,6 +198,7 @@ def get_secret_or_env(name: str, default: str | None = None):
     if name in st.secrets:
         return st.secrets[name]
     return os.getenv(name, default)
+
 
 
 def get_service_account_info() -> dict | None:
@@ -243,8 +219,10 @@ def require_env(name: str, value: str | None):
         st.stop()
 
 
+
 def escape_html(text: str | None) -> str:
     return html.escape("" if text is None else str(text))
+
 
 
 def safe_float(value, default: float = 0.0):
@@ -252,6 +230,7 @@ def safe_float(value, default: float = 0.0):
         return float(value)
     except (TypeError, ValueError):
         return default
+
 
 
 def get_google_credentials() -> Credentials:
@@ -267,7 +246,8 @@ def get_google_credentials() -> Credentials:
         st.stop()
 
     return Credentials.from_service_account_info(st.secrets["gcp_service_account"])
-    
+
+
 @st.cache_resource
 def get_gspread_client():
     return gspread.authorize(get_google_credentials())
@@ -281,12 +261,15 @@ def load_sheet_data() -> List[Dict]:
     return worksheet.get_all_records()
 
 
+
 def get_student_display_options(sheet_data: list[dict]) -> list[str]:
     return [str(row.get("ID", "")).strip() for row in sheet_data if str(row.get("ID", "")).strip()]
 
 
+
 def get_selected_student(sheet_data: list[dict], selected_id: str) -> dict | None:
     return next((row for row in sheet_data if str(row.get("ID", "")).strip() == selected_id), None)
+
 
 
 def get_prepost_value(selected_info: dict, candidates: list[str]):
@@ -296,6 +279,7 @@ def get_prepost_value(selected_info: dict, candidates: list[str]):
         if value not in (None, ""):
             return safe_float(value, None)
     return None
+
 
 
 def get_prepost_scores(selected_info: dict) -> list[dict]:
@@ -314,6 +298,7 @@ def get_prepost_scores(selected_info: dict) -> list[dict]:
     return rows
 
 
+
 def collect_reflection_items(selected_info: dict) -> list[dict]:
     items = []
     for key in REFLECTION_KEYS:
@@ -322,21 +307,6 @@ def collect_reflection_items(selected_info: dict) -> list[dict]:
             items.append({"label": key, "text": text})
     return items
 
-
-def get_reflection_group(label: str) -> str:
-    if label.startswith("ฐานวิชาการ"):
-        return "ฐานวิชาการ"
-    if label.startswith("ฐานกิจกรรม"):
-        return "ฐานกิจกรรม"
-    return "อื่น ๆ"
-
-
-def filter_reflection_items(items: list[dict], selected_filter: str) -> list[dict]:
-    if selected_filter == "ทั้งหมด":
-        return items
-    if selected_filter in ["ฐานวิชาการ", "ฐานกิจกรรม"]:
-        return [item for item in items if get_reflection_group(item["label"]) == selected_filter]
-    return [item for item in items if item["label"] == selected_filter]
 
 
 def render_star_rating(label: str, score: float, max_score: int = 5):
@@ -367,6 +337,8 @@ def render_star_rating(label: str, score: float, max_score: int = 5):
         unsafe_allow_html=True,
     )
 
+
+
 def get_top_faculty_choices(selected_info: dict) -> list[tuple[str, str]]:
     candidates = [
         ("อันดับ 1", selected_info.get("คณะที่อยากเข้า อันดับ 1", "")),
@@ -374,7 +346,8 @@ def get_top_faculty_choices(selected_info: dict) -> list[tuple[str, str]]:
         ("อันดับ 3", selected_info.get("คณะที่อยากเข้า อันดับ 3", "")),
     ]
     return [(rank, str(value).strip()) for rank, value in candidates if str(value).strip()]
-    
+
+
 require_env("GOOGLE_SHEET_KEY", GOOGLE_SHEET_KEY)
 require_env("IDSHEET", IDSHEET)
 
@@ -390,7 +363,6 @@ if not sheet_data:
 
 st.markdown(f'<div class="title-text">{APP_TITLE}</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="sub-text">{APP_SUBTITLE}</div>', unsafe_allow_html=True)
-st.markdown("</div>", unsafe_allow_html=True)
 
 sheet_url = f"https://docs.google.com/spreadsheets/d/{IDSHEET}/edit#gid=0"
 PROFILE_EXCLUDE_KEYS = ["ID"]
@@ -404,7 +376,7 @@ if selected_info is None:
     st.error("ไม่พบข้อมูลของนักเรียนที่เลือก")
     st.stop()
 
-st.markdown('<div class="section-title">📋 ข้อมูลน้อง </div>', unsafe_allow_html=True)
+st.markdown('<div class="section-title">📋 ข้อมูลน้อง</div>', unsafe_allow_html=True)
 
 profile_items = [(key, value) for key, value in list(selected_info.items())[:3] if key not in PROFILE_EXCLUDE_KEYS]
 profile_cols = st.columns(3)
@@ -413,29 +385,15 @@ for idx, (key, value) in enumerate(profile_items):
     with profile_cols[idx % 3]:
         st.markdown(
             f"""
-            <div class="profile-grid-card">
-                <div class="profile-grid-label">{escape_html(str(key))}</div>
-                <div class="profile-grid-value">{escape_html(str(value)) if str(value).strip() else '-'}</div>
+            <div class="soft-panel">
+                <div class="soft-panel-label">{escape_html(str(key))}</div>
+                <div class="soft-panel-value">{escape_html(str(value))}</div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
-if len(profile_items) < 3:
-    for idx in range(len(profile_items), 3):
-        with profile_cols[idx]:
-            st.markdown(
-                """
-                <div class="profile-grid-card">
-                    <div class="profile-grid-label">ข้อมูลเพิ่มเติม</div>
-                    <div class="profile-grid-value">-</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
 st.markdown('<div class="section-title">🎯 คณะที่อยากเข้า 3 อันดับแรก</div>', unsafe_allow_html=True)
-
 faculty_choices = get_top_faculty_choices(selected_info)
 
 if faculty_choices:
@@ -444,9 +402,9 @@ if faculty_choices:
         with faculty_cols[idx % 3]:
             st.markdown(
                 f"""
-                <div class="profile-grid-card">
-                    <div class="profile-grid-label">{escape_html(rank)}</div>
-                    <div class="profile-grid-value">{escape_html(faculty)}</div>
+                <div class="soft-panel">
+                    <div class="soft-panel-label">{escape_html(rank)}</div>
+                    <div class="soft-panel-value">{escape_html(faculty)}</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -456,34 +414,39 @@ else:
 
 st.markdown('<div class="section-title">Reflection ตามฐาน</div>', unsafe_allow_html=True)
 reflection_items = collect_reflection_items(selected_info)
-reflection_filter_options = ["ทั้งหมด", "ฐานวิชาการ", "ฐานกิจกรรม"] + [item["label"] for item in reflection_items]
+reflection_filter_options = ["ทั้งหมด"] + REFLECTION_KEYS
 selected_reflection_filter = st.selectbox(
-    "กรอง Reflection",
+    "กรอง Reflection ตามฐาน",
     reflection_filter_options,
     key="reflection_filter",
 )
-filtered_reflections = filter_reflection_items(reflection_items, selected_reflection_filter)
+
+if selected_reflection_filter == "ทั้งหมด":
+    filtered_reflections = reflection_items
+else:
+    filtered_reflections = [
+        item for item in reflection_items
+        if item["label"] == selected_reflection_filter
+    ]
 
 if filtered_reflections:
     for item in filtered_reflections:
         st.markdown(
             f"""
             <div class="reflection-card">
-                <div class="reflection-chip">{escape_html(item["label"])}</div>
-                <div class="reflection-text">“{escape_html(item["text"])}”</div>
+                <div class="reflection-chip">{escape_html(item['label'])}</div>
+                <div class="reflection-text">“{escape_html(item['text'])}”</div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 else:
-    st.info("ไม่พบ Reflection ตามตัวกรองที่เลือก")
-
-st.markdown("</div>", unsafe_allow_html=True)
+    st.info("ฐานนี้ยังไม่มี Reflection")
 
 st.markdown('<div class="main-card">', unsafe_allow_html=True)
 st.markdown('<div class="section-title">คะแนน Pre-test / Post-test</div>', unsafe_allow_html=True)
 st.dataframe(pd.DataFrame(get_prepost_scores(selected_info)), use_container_width=True, hide_index=True)
-st.markdown("</div>", unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="main-card">', unsafe_allow_html=True)
 st.markdown('<div class="section-title">ภาพรวมทักษะจากข้อมูลในระบบ</div>', unsafe_allow_html=True)
@@ -493,11 +456,9 @@ for group in SELF_RATE_GROUPS:
     st.caption(group["group_note"])
 
     cols = st.columns(2)
-
     for idx, skill in enumerate(group["skills"]):
-        key, label, sheet_col = skill
-
+        _, label, sheet_col = skill
         with cols[idx % 2]:
             render_star_rating(label, selected_info.get(sheet_col, 0))
 
-st.markdown("</div>", unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
