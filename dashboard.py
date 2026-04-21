@@ -182,6 +182,36 @@ st.markdown(
         line-height: 1.7;
         white-space: pre-wrap;
     }
+    .profile-grid-card {
+        padding: 1rem 1.05rem;
+        border-radius: 22px;
+        border: 1px solid rgba(191,219,254,0.82);
+        background: linear-gradient(180deg, rgba(255,255,255,0.97), rgba(239,246,255,0.90));
+        box-shadow: 0 12px 28px rgba(15,23,42,0.05);
+        min-height: 120px;
+        margin-bottom: 0.85rem;
+    }
+    .profile-grid-label {
+        font-size: 0.72rem;
+        color: #64748b;
+        font-weight: 700;
+        margin-bottom: 0.4rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+    .profile-grid-value {
+        font-size: 1.08rem;
+        color: #0f172a;
+        font-weight: 600;
+        line-height: 1.55;
+        word-break: break-word;
+    }
+    div[data-baseweb="select"] > div {
+        border-radius: 16px !important;
+        border: 1px solid rgba(191,219,254,0.9) !important;
+        background: rgba(255,255,255,0.90) !important;
+        box-shadow: 0 8px 18px rgba(15,23,42,0.05) !important;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -293,6 +323,22 @@ def collect_reflection_items(selected_info: dict) -> list[dict]:
     return items
 
 
+def get_reflection_group(label: str) -> str:
+    if label.startswith("ฐานวิชาการ"):
+        return "ฐานวิชาการ"
+    if label.startswith("ฐานกิจกรรม"):
+        return "ฐานกิจกรรม"
+    return "อื่น ๆ"
+
+
+def filter_reflection_items(items: list[dict], selected_filter: str) -> list[dict]:
+    if selected_filter == "ทั้งหมด":
+        return items
+    if selected_filter in ["ฐานวิชาการ", "ฐานกิจกรรม"]:
+        return [item for item in items if get_reflection_group(item["label"]) == selected_filter]
+    return [item for item in items if item["label"] == selected_filter]
+
+
 def render_star_rating(label: str, score: float, max_score: int = 5):
     score = max(0.0, min(safe_float(score), float(max_score)))
     percent = (score / max_score) * 100 if max_score > 0 else 0
@@ -360,49 +406,78 @@ if selected_info is None:
 
 st.markdown('<div class="section-title">📋 ข้อมูลน้อง </div>', unsafe_allow_html=True)
 
+profile_items = [(key, value) for key, value in list(selected_info.items())[:3] if key not in PROFILE_EXCLUDE_KEYS]
+profile_cols = st.columns(3)
 
-for key, value in list(selected_info.items())[:3]:
-    if key in PROFILE_EXCLUDE_KEYS:
-        continue
+for idx, (key, value) in enumerate(profile_items):
+    with profile_cols[idx % 3]:
+        st.markdown(
+            f"""
+            <div class="profile-grid-card">
+                <div class="profile-grid-label">{escape_html(str(key))}</div>
+                <div class="profile-grid-value">{escape_html(str(value)) if str(value).strip() else '-'}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-    st.markdown(
-        f"""
-        <div class="soft-panel">
-            <div class="soft-panel-label">{escape_html(str(key))}</div>
-            <div class="soft-panel-value">{escape_html(str(value))}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+if len(profile_items) < 3:
+    for idx in range(len(profile_items), 3):
+        with profile_cols[idx]:
+            st.markdown(
+                """
+                <div class="profile-grid-card">
+                    <div class="profile-grid-label">ข้อมูลเพิ่มเติม</div>
+                    <div class="profile-grid-value">-</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
 st.markdown('<div class="section-title">🎯 คณะที่อยากเข้า 3 อันดับแรก</div>', unsafe_allow_html=True)
 
 faculty_choices = get_top_faculty_choices(selected_info)
 
 if faculty_choices:
-    for rank, faculty in faculty_choices:
+    faculty_cols = st.columns(3)
+    for idx, (rank, faculty) in enumerate(faculty_choices):
+        with faculty_cols[idx % 3]:
+            st.markdown(
+                f"""
+                <div class="profile-grid-card">
+                    <div class="profile-grid-label">{escape_html(rank)}</div>
+                    <div class="profile-grid-value">{escape_html(faculty)}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+else:
+    st.info("ยังไม่มีข้อมูลคณะที่อยากเข้า 3 อันดับแรก")
+
+st.markdown('<div class="section-title">Reflection ตามฐาน</div>', unsafe_allow_html=True)
+reflection_items = collect_reflection_items(selected_info)
+reflection_filter_options = ["ทั้งหมด", "ฐานวิชาการ", "ฐานกิจกรรม"] + [item["label"] for item in reflection_items]
+selected_reflection_filter = st.selectbox(
+    "กรอง Reflection",
+    reflection_filter_options,
+    key="reflection_filter",
+)
+filtered_reflections = filter_reflection_items(reflection_items, selected_reflection_filter)
+
+if filtered_reflections:
+    for item in filtered_reflections:
         st.markdown(
             f"""
-            <div class="soft-panel">
-                <div class="soft-panel-label">{escape_html(rank)}</div>
-                <div class="soft-panel-value">{escape_html(faculty)}</div>
+            <div class="reflection-card">
+                <div class="reflection-chip">{escape_html(item["label"])}</div>
+                <div class="reflection-text">“{escape_html(item["text"])}”</div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 else:
-    st.info("ยังไม่มีข้อมูลคณะที่อยากเข้า 3 อันดับแรก")
-    
-st.markdown('<div class="section-title">Reflection ตามฐาน</div>', unsafe_allow_html=True)
-for item in collect_reflection_items(selected_info):
-    st.markdown(
-        f"""
-        <div class="reflection-card">
-            <div class="reflection-chip">{escape_html(item["label"])}</div>
-            <div class="reflection-text">“{escape_html(item["text"])}”</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.info("ไม่พบ Reflection ตามตัวกรองที่เลือก")
+
 st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown('<div class="main-card">', unsafe_allow_html=True)
