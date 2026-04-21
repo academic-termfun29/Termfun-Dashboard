@@ -339,6 +339,32 @@ def render_star_rating(label: str, score: float, max_score: int = 5):
 
 
 
+
+
+def get_student_name(selected_info: dict) -> str:
+    candidate_keys = ["ชื่อ", "ชื่อ-สกุล", "ชื่อ สกุล", "name", "fullname", "full name"]
+    normalized = {str(k).strip().lower(): v for k, v in selected_info.items()}
+    for key in candidate_keys:
+        value = normalized.get(key.strip().lower())
+        if str(value).strip():
+            return str(value).strip()
+    return "-"
+
+
+def collect_reflections_for_base(sheet_data: list[dict], reflection_key: str) -> list[dict]:
+    items = []
+    for row in sheet_data:
+        student_id = str(row.get("ID", "")).strip()
+        reflection_text = str(row.get(reflection_key, "")).strip()
+        if not student_id or not reflection_text:
+            continue
+        items.append({
+            "id": student_id,
+            "name": get_student_name(row),
+            "label": reflection_key,
+            "text": reflection_text,
+        })
+    return items
 def get_top_faculty_choices(selected_info: dict) -> list[tuple[str, str]]:
     candidates = [
         ("อันดับ 1", selected_info.get("คณะที่อยากเข้า อันดับ 1", "")),
@@ -361,104 +387,177 @@ if not sheet_data:
     st.warning("ยังไม่พบข้อมูลนักเรียนจาก Google Sheets")
     st.stop()
 
+
+st.sidebar.markdown("## 🌤️ เมนู")
+page = st.sidebar.radio(
+    "เลือกหน้า",
+    ["Dashboard รายบุคคล", "Reflection แยกฐาน"],
+    key="page_selector",
+)
+
 st.markdown(f'<div class="title-text">{APP_TITLE}</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="sub-text">{APP_SUBTITLE}</div>', unsafe_allow_html=True)
 
 sheet_url = f"https://docs.google.com/spreadsheets/d/{IDSHEET}/edit#gid=0"
 PROFILE_EXCLUDE_KEYS = ["ID"]
 
-display_options = get_student_display_options(sheet_data)
-selected_id = st.selectbox("เลือกนักเรียน", display_options)
-selected_info = get_selected_student(sheet_data, selected_id)
-st.link_button("🔍 เช็ค ID ตรงนี้", sheet_url)
+if page == "Dashboard รายบุคคล":
+    st.sidebar.markdown("---")
+    st.sidebar.caption("ดูข้อมูลรายคน พร้อมคะแนน ทักษะ และ reflection")
 
-if selected_info is None:
-    st.error("ไม่พบข้อมูลของนักเรียนที่เลือก")
-    st.stop()
+    display_options = get_student_display_options(sheet_data)
+    selected_id = st.selectbox("เลือกนักเรียน", display_options)
+    selected_info = get_selected_student(sheet_data, selected_id)
+    st.link_button("🔍 เช็ค ID ตรงนี้", sheet_url)
 
-st.markdown('<div class="section-title">📋 ข้อมูลน้อง</div>', unsafe_allow_html=True)
+    if selected_info is None:
+        st.error("ไม่พบข้อมูลของนักเรียนที่เลือก")
+        st.stop()
 
-profile_items = [(key, value) for key, value in list(selected_info.items())[:3] if key not in PROFILE_EXCLUDE_KEYS]
-profile_cols = st.columns(3)
+    st.markdown('<div class="section-title">📋 ข้อมูลน้อง</div>', unsafe_allow_html=True)
 
-for idx, (key, value) in enumerate(profile_items):
-    with profile_cols[idx % 3]:
-        st.markdown(
-            f"""
-            <div class="soft-panel">
-                <div class="soft-panel-label">{escape_html(str(key))}</div>
-                <div class="soft-panel-value">{escape_html(str(value))}</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+    profile_items = [(key, value) for key, value in list(selected_info.items())[:3] if key not in PROFILE_EXCLUDE_KEYS]
+    profile_cols = st.columns(3)
 
-st.markdown('<div class="section-title">🎯 คณะที่อยากเข้า 3 อันดับแรก</div>', unsafe_allow_html=True)
-faculty_choices = get_top_faculty_choices(selected_info)
-
-if faculty_choices:
-    faculty_cols = st.columns(3)
-    for idx, (rank, faculty) in enumerate(faculty_choices):
-        with faculty_cols[idx % 3]:
+    for idx, (key, value) in enumerate(profile_items):
+        with profile_cols[idx % 3]:
             st.markdown(
                 f"""
                 <div class="soft-panel">
-                    <div class="soft-panel-label">{escape_html(rank)}</div>
-                    <div class="soft-panel-value">{escape_html(faculty)}</div>
+                    <div class="soft-panel-label">{escape_html(str(key))}</div>
+                    <div class="soft-panel-value">{escape_html(str(value))}</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
+
+    st.markdown('<div class="section-title">🎯 คณะที่อยากเข้า 3 อันดับแรก</div>', unsafe_allow_html=True)
+    faculty_choices = get_top_faculty_choices(selected_info)
+
+    if faculty_choices:
+        faculty_cols = st.columns(3)
+        for idx, (rank, faculty) in enumerate(faculty_choices):
+            with faculty_cols[idx % 3]:
+                st.markdown(
+                    f"""
+                    <div class="soft-panel">
+                        <div class="soft-panel-label">{escape_html(rank)}</div>
+                        <div class="soft-panel-value">{escape_html(faculty)}</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+    else:
+        st.info("ยังไม่มีข้อมูลคณะที่อยากเข้า 3 อันดับแรก")
+
+    st.markdown('<div class="section-title">Reflection ตามฐาน</div>', unsafe_allow_html=True)
+    reflection_items = collect_reflection_items(selected_info)
+    reflection_filter_options = ["ทั้งหมด"] + REFLECTION_KEYS
+    selected_reflection_filter = st.selectbox(
+        "กรอง Reflection ของนักเรียนที่เลือก",
+        reflection_filter_options,
+        key="reflection_filter",
+    )
+
+    if selected_reflection_filter == "ทั้งหมด":
+        filtered_reflections = reflection_items
+    else:
+        filtered_reflections = [
+            item for item in reflection_items
+            if item["label"] == selected_reflection_filter
+        ]
+
+    if filtered_reflections:
+        for item in filtered_reflections:
+            st.markdown(
+                f"""
+                <div class="reflection-card">
+                    <div class="reflection-chip">{escape_html(item['label'])}</div>
+                    <div class="reflection-text">“{escape_html(item['text'])}”</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+    else:
+        st.info("ฐานนี้ยังไม่มี Reflection")
+
+    st.markdown('<div class="main-card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">คะแนน Pre-test / Post-test</div>', unsafe_allow_html=True)
+    st.dataframe(pd.DataFrame(get_prepost_scores(selected_info)), use_container_width=True, hide_index=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="main-card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">ภาพรวมทักษะจากข้อมูลในระบบ</div>', unsafe_allow_html=True)
+
+    for group in SELF_RATE_GROUPS:
+        st.markdown(f"#### {group['group_title']}")
+        st.caption(group["group_note"])
+
+        cols = st.columns(2)
+        for idx, skill in enumerate(group["skills"]):
+            _, label, sheet_col = skill
+            with cols[idx % 2]:
+                render_star_rating(label, selected_info.get(sheet_col, 0))
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
 else:
-    st.info("ยังไม่มีข้อมูลคณะที่อยากเข้า 3 อันดับแรก")
+    st.sidebar.markdown("---")
+    st.sidebar.caption("เปิดดู Reflection ของทุก ID โดยแยกตามฐาน")
+    selected_bases = st.sidebar.multiselect(
+        "เลือกฐานที่ต้องการดู",
+        REFLECTION_KEYS,
+        default=[REFLECTION_KEYS[0]],
+        key="sidebar_reflection_bases",
+    )
+    show_only_with_name = st.sidebar.toggle(
+        "แสดงเฉพาะรายการที่มีชื่อ",
+        value=False,
+        key="show_only_with_name_sidebar",
+    )
 
-st.markdown('<div class="section-title">Reflection ตามฐาน</div>', unsafe_allow_html=True)
-reflection_items = collect_reflection_items(selected_info)
-reflection_filter_options = ["ทั้งหมด"] + REFLECTION_KEYS
-selected_reflection_filter = st.selectbox(
-    "กรอง Reflection ตามฐาน",
-    reflection_filter_options,
-    key="reflection_filter",
-)
+    st.markdown('<div class="main-card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">🗂️ Reflection แยกฐาน</div>', unsafe_allow_html=True)
+    st.caption('เลือกฐานจาก sidebar ด้านซ้าย แล้วระบบจะแสดง Reflection ของทุก ID ตามฐานที่เลือก')
 
-if selected_reflection_filter == "ทั้งหมด":
-    filtered_reflections = reflection_items
-else:
-    filtered_reflections = [
-        item for item in reflection_items
-        if item["label"] == selected_reflection_filter
-    ]
+    if not selected_bases:
+        st.info("กรุณาเลือกอย่างน้อย 1 ฐานจาก sidebar")
+    else:
+        all_rows = []
+        for base in selected_bases:
+            items = collect_reflections_for_base(sheet_data, base)
+            if show_only_with_name:
+                items = [item for item in items if item["name"] != "-"]
 
-if filtered_reflections:
-    for item in filtered_reflections:
-        st.markdown(
-            f"""
-            <div class="reflection-card">
-                <div class="reflection-chip">{escape_html(item['label'])}</div>
-                <div class="reflection-text">“{escape_html(item['text'])}”</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-else:
-    st.info("ฐานนี้ยังไม่มี Reflection")
+            st.markdown(f"<div class='section-title'>{escape_html(base)}</div>", unsafe_allow_html=True)
+            st.markdown(
+                f"<div class='sub-text'>พบข้อมูล <b>{len(items)}</b> รายการ</div>",
+                unsafe_allow_html=True,
+            )
 
-st.markdown('<div class="main-card">', unsafe_allow_html=True)
-st.markdown('<div class="section-title">คะแนน Pre-test / Post-test</div>', unsafe_allow_html=True)
-st.dataframe(pd.DataFrame(get_prepost_scores(selected_info)), use_container_width=True, hide_index=True)
-st.markdown('</div>', unsafe_allow_html=True)
+            if items:
+                all_rows.extend(items)
+                st.dataframe(
+                    pd.DataFrame([
+                        {"ID": item["id"], "ชื่อ": item["name"], "ฐาน": item["label"]}
+                        for item in items
+                    ]),
+                    use_container_width=True,
+                    hide_index=True,
+                )
 
-st.markdown('<div class="main-card">', unsafe_allow_html=True)
-st.markdown('<div class="section-title">ภาพรวมทักษะจากข้อมูลในระบบ</div>', unsafe_allow_html=True)
+                for item in items:
+                    st.markdown(
+                        f"""
+                        <div class="reflection-card">
+                            <div class="reflection-chip">ID: {escape_html(item['id'])} | {escape_html(item['name'])}</div>
+                            <div class="soft-panel-label" style="margin-bottom:0.45rem;">{escape_html(item['label'])}</div>
+                            <div class="reflection-text">“{escape_html(item['text'])}”</div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+            else:
+                st.info("ฐานนี้ยังไม่มี Reflection ในระบบ")
 
-for group in SELF_RATE_GROUPS:
-    st.markdown(f"#### {group['group_title']}")
-    st.caption(group["group_note"])
-
-    cols = st.columns(2)
-    for idx, skill in enumerate(group["skills"]):
-        _, label, sheet_col = skill
-        with cols[idx % 2]:
-            render_star_rating(label, selected_info.get(sheet_col, 0))
-
-st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
